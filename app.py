@@ -1,3 +1,5 @@
+from logging import debug
+
 import bcrypt
 import traceback
 from flask import Flask, request, jsonify
@@ -186,7 +188,7 @@ def update_user():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 def myApp(environ, start_response):
-    app.run(port=5005)
+    app.run(port=5005, debug=True)
 
 if __name__ == '__main__':
     myApp(None, None)
