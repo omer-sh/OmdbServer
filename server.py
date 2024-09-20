@@ -2,6 +2,7 @@ import bcrypt
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from azure.storage.blob import BlobServiceClient
 
 app = Flask(__name__)
 
@@ -10,6 +11,37 @@ client = MongoClient('mongodb+srv://omerremo12345:Tn3gHhS130qhJp2Y@cluster0.fvwt
 db = client['OMDB']  # Replace with your actual database name
 
 
+# Initialize the Blob Service Client
+connection_string = "DefaultEndpointsProtocol=https;AccountName=photosforomdb;AccountKey=uiWxI5x9UWkye4P/jUjM1ZgMkRsYcKMlCjbeFyE1mDA0vkIq+6YN6qy2l2Ze5bAclwi7Xkl2Cx/R+ASt7biu0g==;EndpointSuffix=core.windows.net"
+blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+
+
+def upload_image(file):
+    container_name = "photos"  # Your container name
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=file.filename)
+
+    # Upload the file
+    blob_client.upload_blob(file, overwrite=True)  # Overwrite if the blob already exists
+
+    # Generate the URL to the uploaded blob
+    return blob_client.url
+
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    if 'image' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files['image']
+
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    # Call the upload function
+    image_url = upload_image(file)
+
+    # Return the URL or save it to your database as needed
+    return jsonify({"image_url": image_url}), 200
 
 # Hash password
 def hash_password(password):
