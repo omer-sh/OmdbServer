@@ -184,6 +184,8 @@ def update_user():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
+def app(environ, start_response):
+    app.run(host="0.0.0.0", port=5000, debug=True)
 
 if __name__ == '__main__':
     app.run()
