@@ -7,7 +7,7 @@ from azure.storage.blob import BlobServiceClient
 app = Flask(__name__)
 
 # MongoDB setup
-client = MongoClient('mongodb+srv://omerremo12345:Tn3gHhS130qhJp2Y@cluster0.fvwtd.mongodb.net/')  # Replace with your actual MongoDB connection string
+client = MongoClient('mongodb://mongodb-for-omdb:00ttji0gccVUITNxqCu6NxwTlnvN5cbi034cAQ7lgabq8AojDRdJbfUpImkQBlaRJuO0jy3xwVgLACDbnAa44Q==@mongodb-for-omdb.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@mongodb-for-omdb@')
 db = client['OMDB']  # Replace with your actual database name
 
 
@@ -186,4 +186,4 @@ def update_user():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
