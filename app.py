@@ -185,18 +185,5 @@ def update_user():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
-def app(environ, start_response):
-    try:
-        1 / 0
-    except Exception as e:
-        with open('appFuncLog.txt', 'a') as f:
-            f.write(traceback.format_exc())
-    appFlask.run()
-
 if __name__ == '__main__':
-    try:
-        1 / 0
-    except Exception as e:
-        with open('mainLog.txt', 'a') as f:
-            f.write(traceback.format_exc())
     appFlask.run()
