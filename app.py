@@ -189,4 +189,4 @@ def myApp(environ, start_response):
     app.run()
 
 if __name__ == '__main__':
-    app(None, None)
+    myApp(None, None)
