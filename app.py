@@ -198,7 +198,7 @@ if __name__ == '__main__':
     try:
         1 / 0
     except Exception as e:
-        with open('appFuncLog.txt', 'a') as f:
+        with open('mainLog.txt', 'a') as f:
             f.write(str(e))
             f.write(traceback.format_exc())
     appFlask.run()
