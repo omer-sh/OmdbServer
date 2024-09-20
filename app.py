@@ -190,7 +190,6 @@ def app(environ, start_response):
         1 / 0
     except Exception as e:
         with open('appFuncLog.txt', 'a') as f:
-            f.write(str(e))
             f.write(traceback.format_exc())
     appFlask.run()
 
@@ -199,6 +198,5 @@ if __name__ == '__main__':
         1 / 0
     except Exception as e:
         with open('mainLog.txt', 'a') as f:
-            f.write(str(e))
             f.write(traceback.format_exc())
     appFlask.run()
