@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from azure.storage.blob import BlobServiceClient
 
-appFlask = Flask(__name__)
+app = Flask(__name__)
 
 # MongoDB setup
 client = MongoClient('mongodb://mongodb-for-omdb:00ttji0gccVUITNxqCu6NxwTlnvN5cbi034cAQ7lgabq8AojDRdJbfUpImkQBlaRJuO0jy3xwVgLACDbnAa44Q==@mongodb-for-omdb.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@mongodb-for-omdb@')
@@ -28,7 +28,7 @@ def upload_image(file):
     return blob_client.url
 
 
-@appFlask.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST'])
 def upload():
     if 'image' not in request.files:
         return jsonify({"error": "No file part"}), 400
@@ -55,7 +55,7 @@ def verify_password(stored_password, provided_password):
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password)
 
 # Register user with hashed password, full name, and photo
-@appFlask.route('/register_user', methods=['POST'])
+@app.route('/register_user', methods=['POST'])
 def register_user():
     if request.is_json:
         data = request.get_json()
@@ -75,7 +75,7 @@ def register_user():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 # User login with password verification
-@appFlask.route('/login', methods=['POST'])
+@app.route('/login', methods=['POST'])
 def login():
     if request.is_json:
         data = request.get_json()
@@ -98,7 +98,7 @@ def login():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 # Create playlist with visibility option
-@appFlask.route('/create_playlist', methods=['POST'])
+@app.route('/create_playlist', methods=['POST'])
 def create_playlist():
     if request.is_json:
         data = request.get_json()
@@ -118,7 +118,7 @@ def create_playlist():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 # Add a movie to a playlist
-@appFlask.route('/add_movie_to_playlist', methods=['PUT'])
+@app.route('/add_movie_to_playlist', methods=['PUT'])
 def add_movie_to_playlist():
     if request.is_json:
         data = request.get_json()
@@ -133,7 +133,7 @@ def add_movie_to_playlist():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 # Get all playlists for a user (both private and public)
-@appFlask.route('/get_user_playlists/<user_id>', methods=['GET'])
+@app.route('/get_user_playlists/<user_id>', methods=['GET'])
 def get_user_playlists(user_id):
     user = db.users.find_one({"_id": ObjectId(user_id)})
 
@@ -151,7 +151,7 @@ def get_user_playlists(user_id):
         return jsonify({"error": "User not found"}), 404
 
 # Get all public playlists of all users
-@appFlask.route('/get_public_playlists', methods=['GET'])
+@app.route('/get_public_playlists', methods=['GET'])
 def get_public_playlists():
     playlists = db.playlists.find({"visibility": "public"})
     result = []
@@ -165,7 +165,7 @@ def get_public_playlists():
     return jsonify(result), 200
 
 # Update user information (name, photo)
-@appFlask.route('/update_user', methods=['PUT'])
+@app.route('/update_user', methods=['PUT'])
 def update_user():
     if request.is_json:
         data = request.get_json()
@@ -186,4 +186,4 @@ def update_user():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 if __name__ == '__main__':
-    appFlask.run()
+    app.run()
