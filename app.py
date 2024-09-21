@@ -56,11 +56,15 @@ def hash_password(password):
 def verify_password(stored_password, provided_password):
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password)
 
-# Register user with hashed password, full name, and photo
 @app.route('/register_user', methods=['POST'])
 def register_user():
     if request.is_json:
         data = request.get_json()
+
+        # Check if the username already exists
+        existing_user = db.users.find_one({"username": data['username']})
+        if existing_user:
+            return jsonify({"error": "Username already exists"}), 409
 
         hashed_password = hash_password(data['password'])
         user = {
