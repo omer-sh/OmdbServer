@@ -1,7 +1,5 @@
-from logging import debug
-
+import uuid
 import bcrypt
-import traceback
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -21,7 +19,8 @@ blob_service_client = BlobServiceClient.from_connection_string(connection_string
 
 def upload_image(file):
     container_name = "photos"  # Your container name
-    blob_client = blob_service_client.get_blob_client(container=container_name, blob=file.filename)
+    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=unique_filename)
 
     # Upload the file
     blob_client.upload_blob(file, overwrite=True)  # Overwrite if the blob already exists
