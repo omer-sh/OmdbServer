@@ -170,7 +170,7 @@ def get_public_playlists():
     return jsonify(result), 200
 
 # Update user information (name, photo)
-@app.route('/update_user', methods=['PUT'])
+@app.route('/update_user', methods=['POST'])
 def update_user():
     if request.is_json:
         data = request.get_json()
