@@ -167,7 +167,7 @@ def get_public_playlists():
         })
     return jsonify(result), 200
 
-# Update user information (name, photo)
+# Update user information (name, photo, password)
 @app.route('/update_user', methods=['POST'])
 def update_user():
     if request.is_json:
@@ -179,7 +179,14 @@ def update_user():
             if 'fullName' in data:
                 update_fields['fullName'] = data['fullName']
             if 'userPhoto' in data:
+                # Remove the old photo from Azure server
+                old_photo_url = user.get('userPhoto')
+                if old_photo_url:
+                    blob_client = blob_service_client.get_blob_client(container="photos", blob=old_photo_url.split('/')[-1])
+                    blob_client.delete_blob()
                 update_fields['userPhoto'] = data['userPhoto']
+            if 'password' in data:
+                update_fields['password'] = hash_password(data['password'])
 
             db.users.update_one({"_id": ObjectId(data['userId'])}, {"$set": update_fields})
             return jsonify({"message": "User's information updated successfully!"}), 200
@@ -187,6 +194,7 @@ def update_user():
             return jsonify({"error": "User not found"}), 404
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
+
 
 def myApp(environ, start_response):
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True, use_reloader=False)
