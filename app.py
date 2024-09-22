@@ -179,11 +179,6 @@ def update_user():
             if 'fullName' in data:
                 update_fields['fullName'] = data['fullName']
             if 'userPhoto' in data:
-                # Remove the old photo from Azure server
-                old_photo_url = user.get('userPhoto')
-                if old_photo_url:
-                    blob_client = blob_service_client.get_blob_client(container="photos", blob=old_photo_url.split('/')[-1])
-                    blob_client.delete_blob()
                 update_fields['userPhoto'] = data['userPhoto']
             if 'password' in data:
                 update_fields['password'] = hash_password(data['password'])
