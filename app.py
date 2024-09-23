@@ -14,6 +14,7 @@ db = client['OMDB']  # Replace with your actual database name
 
 # Initialize the Blob Service Client
 connection_string = "DefaultEndpointsProtocol=https;AccountName=photosforomdb;AccountKey=uiWxI5x9UWkye4P/jUjM1ZgMkRsYcKMlCjbeFyE1mDA0vkIq+6YN6qy2l2Ze5bAclwi7Xkl2Cx/R+ASt7biu0g==;EndpointSuffix=core.windows.net"
+account_key = "uiWxI5x9UWkye4P/jUjM1ZgMkRsYcKMlCjbeFyE1mDA0vkIq+6YN6qy2l2Ze5bAclwi7Xkl2Cx/R+ASt7biu0g=="
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
 account_name = "photosforomdb"
 container_name = "photos"  # Replace with your container name
@@ -141,18 +142,33 @@ def add_movie_to_playlist():
 
 # Utility function to generate the full blob URL with SAS token
 def get_blob_url_with_sas(blob_name):
+    # Check if a valid SAS token already exists in the database
+    token_data = db.sas_tokens.find_one({"blob_name": blob_name})
+    if token_data and token_data['expiry'] > datetime.utcnow():
+        return f"{blob_name}?{token_data['sas_token']}"
+
+    # Generate a new SAS token
     sas_token = generate_blob_sas(
         account_name=account_name,
         container_name=container_name,
         blob_name=blob_name.split("/")[-1],
-        account_key="uiWxI5x9UWkye4P/jUjM1ZgMkRsYcKMlCjbeFyE1mDA0vkIq+6YN6qy2l2Ze5bAclwi7Xkl2Cx/R+ASt7biu0g==",  # Use your account key here
+        account_key=account_key,
         permission=BlobSasPermissions(read=True),
-        expiry=datetime.utcnow() + timedelta(hours=1)  # Set an expiry time
+        expiry=datetime.utcnow() + timedelta(hours=1)
     )
+
+    # Save the new SAS token to the database only if it doesn't exist or is expired
+    try:
+        db.sas_tokens.update_one(
+            {"blob_name": blob_name},
+            {"$set": {"sas_token": sas_token, "expiry": datetime.utcnow() + timedelta(hours=1)}},
+            upsert=True
+        )
+    except Exception as e:
+        print(f"Failed to update SAS token in the database: {e}")
 
     # Construct the full URL with the SAS token
     return f"{blob_name}?{sas_token}"
-
 
 
 # Get all public playlists of all users
@@ -165,6 +181,7 @@ def get_public_playlists():
         creator = db.users.find_one({"_id": playlist['userId']})
 
         result.append({
+            "playlistId": str(playlist['_id']),
             "creatorName": creator['fullName'],
             "playlistName": playlist['playlistName'],
             "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto'])  # Use utility function
@@ -184,6 +201,7 @@ def get_user_playlists(user_id):
 
         for playlist in playlists:
             result.append({
+                "playlistId": str(playlist['_id']),
                 "playlistName": playlist['playlistName'],
                 "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),  # Use utility function
                 "visibility": playlist['visibility']
@@ -192,6 +210,37 @@ def get_user_playlists(user_id):
         return jsonify(result), 200
     else:
         return jsonify({"error": "User not found"}), 404
+
+
+@app.route('/get_playlist_info', methods=['GET'])
+def get_playlist_info():
+    playlist_id = request.args.get('playlistId')
+    user_id = request.args.get('userId')
+
+    if not playlist_id or not user_id:
+        return jsonify({"error": "Missing playlistId or userId"}), 400
+
+    playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+
+    if not playlist:
+        return jsonify({"error": "Playlist not found"}), 404
+
+    if playlist['visibility'] == 'private' and str(playlist['userId']) != user_id:
+        return jsonify({"error": "Unauthorized access to private playlist"}), 403
+
+    creator = db.users.find_one({"_id": playlist['userId']})
+
+    playlist_info = {
+        "playlistId": str(playlist['_id']),
+        "creatorName": creator['fullName'],
+        "creatorPhoto": get_blob_url_with_sas(creator["userPhoto"]),
+        "playlistName": playlist['playlistName'],
+        "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),
+        "visibility": playlist['visibility'],
+        "movieIds": playlist['movieIds']
+    }
+
+    return jsonify(playlist_info), 200
 
 # Update user information (name, photo, password)
 @app.route('/update_user', methods=['POST'])
@@ -218,7 +267,7 @@ def update_user():
 
 
 def myApp(environ, start_response):
-    app.run(host="127.0.0.1", port=5000, debug=True, threaded=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True, use_reloader=False)
 
 if __name__ == '__main__':
     myApp(None, None)
