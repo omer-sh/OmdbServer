@@ -2,7 +2,8 @@ import bcrypt
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -14,6 +15,8 @@ db = client['OMDB']  # Replace with your actual database name
 # Initialize the Blob Service Client
 connection_string = "DefaultEndpointsProtocol=https;AccountName=photosforomdb;AccountKey=uiWxI5x9UWkye4P/jUjM1ZgMkRsYcKMlCjbeFyE1mDA0vkIq+6YN6qy2l2Ze5bAclwi7Xkl2Cx/R+ASt7biu0g==;EndpointSuffix=core.windows.net"
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+account_name = "photosforomdb"
+container_name = "photos"  # Replace with your container name
 
 
 def upload_image(file):
@@ -135,6 +138,41 @@ def add_movie_to_playlist():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
+
+# Utility function to generate the full blob URL with SAS token
+def get_blob_url_with_sas(blob_name):
+    sas_token = generate_blob_sas(
+        account_name=account_name,
+        container_name=container_name,
+        blob_name=blob_name.split("/")[-1],
+        account_key="uiWxI5x9UWkye4P/jUjM1ZgMkRsYcKMlCjbeFyE1mDA0vkIq+6YN6qy2l2Ze5bAclwi7Xkl2Cx/R+ASt7biu0g==",  # Use your account key here
+        permission=BlobSasPermissions(read=True),
+        expiry=datetime.utcnow() + timedelta(hours=1)  # Set an expiry time
+    )
+
+    # Construct the full URL with the SAS token
+    return f"{blob_name}?{sas_token}"
+
+
+
+# Get all public playlists of all users
+@app.route('/get_public_playlists', methods=['GET'])
+def get_public_playlists():
+    playlists = db.playlists.find({"visibility": "public"})
+    result = []
+
+    for playlist in playlists:
+        creator = db.users.find_one({"_id": playlist['userId']})
+
+        result.append({
+            "creatorName": creator['fullName'],
+            "playlistName": playlist['playlistName'],
+            "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto'])  # Use utility function
+        })
+
+    return jsonify(result), 200
+
+
 # Get all playlists for a user (both private and public)
 @app.route('/get_user_playlists/<user_id>', methods=['GET'])
 def get_user_playlists(user_id):
@@ -143,29 +181,17 @@ def get_user_playlists(user_id):
     if user:
         playlists = db.playlists.find({"userId": ObjectId(user_id)})
         result = []
+
         for playlist in playlists:
             result.append({
                 "playlistName": playlist['playlistName'],
-                "playlistPhoto": playlist['playlistPhoto'],
+                "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),  # Use utility function
                 "visibility": playlist['visibility']
             })
+
         return jsonify(result), 200
     else:
         return jsonify({"error": "User not found"}), 404
-
-# Get all public playlists of all users
-@app.route('/get_public_playlists', methods=['GET'])
-def get_public_playlists():
-    playlists = db.playlists.find({"visibility": "public"})
-    result = []
-    for playlist in playlists:
-        creator = db.users.find_one({"_id": playlist['userId']})
-        result.append({
-            "creatorName": creator['fullName'],
-            "playlistName": playlist['playlistName'],
-            "playlistPhoto": playlist['playlistPhoto']
-        })
-    return jsonify(result), 200
 
 # Update user information (name, photo, password)
 @app.route('/update_user', methods=['POST'])
@@ -192,7 +218,7 @@ def update_user():
 
 
 def myApp(environ, start_response):
-    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True, use_reloader=False)
+    app.run(host="127.0.0.1", port=5000, debug=True, threaded=True, use_reloader=False)
 
 if __name__ == '__main__':
     myApp(None, None)
