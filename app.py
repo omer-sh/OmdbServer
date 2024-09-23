@@ -184,7 +184,8 @@ def get_public_playlists():
             "playlistId": str(playlist['_id']),
             "creatorName": creator['fullName'],
             "playlistName": playlist['playlistName'],
-            "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto'])  # Use utility function
+            "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),  # Use utility function
+            "numberOfMovies": len(playlist['movieIds'])
         })
 
     return jsonify(result), 200
@@ -204,7 +205,8 @@ def get_user_playlists(user_id):
                 "playlistId": str(playlist['_id']),
                 "playlistName": playlist['playlistName'],
                 "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),  # Use utility function
-                "visibility": playlist['visibility']
+                "visibility": playlist['visibility'],
+                "numberOfMovies": len(playlist['movieIds'])
             })
 
         return jsonify(result), 200
