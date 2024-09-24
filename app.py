@@ -184,7 +184,7 @@ def get_public_playlists():
             "playlistId": str(playlist['_id']),
             "creatorName": creator['fullName'],
             "playlistName": playlist['playlistName'],
-            "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),  # Use utility function
+            "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if playlist['playlistPhoto'] else None,
             "numberOfMovies": len(playlist['movieIds'])
         })
 
@@ -203,11 +203,12 @@ def get_user_playlists(user_id):
         for playlist in playlists:
             result.append({
                 "playlistId": str(playlist['_id']),
+                "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if playlist["playlistPhoto"] else None,
                 "playlistName": playlist['playlistName'],
-                "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),  # Use utility function
                 "visibility": playlist['visibility'],
                 "numberOfMovies": len(playlist['movieIds'])
             })
+
 
         return jsonify(result), 200
     else:
@@ -236,9 +237,9 @@ def get_playlist_info():
         "userId": str(playlist['userId']),
         "playlistId": str(playlist['_id']),
         "creatorName": creator['fullName'],
-        "creatorPhoto": get_blob_url_with_sas(creator["userPhoto"]),
+        "creatorPhoto": get_blob_url_with_sas(creator["userPhoto"]) if creator["userPhoto"] else None,
         "playlistName": playlist['playlistName'],
-        "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']),
+        "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if creator["userPhoto"] else None,
         "visibility": playlist['visibility'],
         "movieIds": playlist['movieIds']
     }
@@ -268,6 +269,110 @@ def update_user():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
+
+@app.route('/update_playlist', methods=['PUT'])
+def update_playlist():
+    if request.is_json:
+        data = request.get_json()
+        playlist_id = data.get('playlistId')
+        user_id = data.get('userId')
+
+        if not playlist_id or not user_id:
+            return jsonify({"error": "Missing playlistId or userId"}), 400
+
+        playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+
+        if not playlist:
+            return jsonify({"error": "Playlist not found"}), 404
+
+        if str(playlist['userId']) != user_id:
+            return jsonify({"error": "Unauthorized access to update playlist"}), 403
+
+        update_fields = {}
+        if 'playlistName' in data:
+            update_fields['playlistName'] = data['playlistName']
+        if 'playlistPhoto' in data:
+            update_fields['playlistPhoto'] = data['playlistPhoto']
+        if 'visibility' in data:
+            update_fields['visibility'] = data['visibility']
+
+        db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$set": update_fields})
+        return jsonify({"message": "Playlist updated successfully!"}), 200
+    else:
+        return jsonify({"error": "Unsupported Media Type"}), 415
+
+@app.route('/remove_playlist', methods=['DELETE'])
+def remove_playlist():
+    if request.is_json:
+        data = request.get_json()
+        playlist_id = data.get('playlistId')
+        user_id = data.get('userId')
+
+        if not playlist_id or not user_id:
+            return jsonify({"error": "Missing playlistId or userId"}), 400
+
+        playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+
+        if not playlist:
+            return jsonify({"error": "Playlist not found"}), 404
+
+        if str(playlist['userId']) != user_id:
+            return jsonify({"error": "Unauthorized access to remove playlist"}), 403
+
+        db.playlists.delete_one({"_id": ObjectId(playlist_id)})
+        return jsonify({"message": "Playlist removed successfully!"}), 200
+    else:
+        return jsonify({"error": "Unsupported Media Type"}), 415
+
+
+@app.route('/remove_movie_from_playlist', methods=['PUT'])
+def remove_movie_from_playlist():
+    if request.is_json:
+        data = request.get_json()
+        playlist_id = data.get('playlistId')
+        user_id = data.get('userId')
+        movie_id = data.get('movieId')
+
+        if not playlist_id or not user_id or not movie_id:
+            return jsonify({"error": "Missing playlistId, userId, or movieId"}), 400
+
+        playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+
+        if not playlist:
+            return jsonify({"error": "Playlist not found"}), 404
+
+        if str(playlist['userId']) != user_id:
+            return jsonify({"error": "Unauthorized access to remove movie from playlist"}), 403
+
+        db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$pull": {"movieIds": movie_id}})
+        return jsonify({"message": "Movie removed from playlist!"}), 200
+    else:
+        return jsonify({"error": "Unsupported Media Type"}), 415
+
+
+@app.route('/get_all_user_playlists_by_movie', methods=['GET'])
+def get_all_user_playlists_by_movie():
+    user_id = request.args.get('userId')
+    movie_id = request.args.get('movieId')
+
+    if not user_id or not movie_id:
+        return jsonify({"error": "Missing userId or movieId"}), 400
+
+    user = db.users.find_one({"_id": ObjectId(user_id)})
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    playlists = db.playlists.find({"userId": ObjectId(user_id)})
+    result = []
+
+    for playlist in playlists:
+        result.append({
+            "playlistName": playlist['playlistName'],
+            "containsMovie": movie_id in playlist['movieIds']
+        })
+
+    return jsonify(result), 200
 
 def myApp(environ, start_response):
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True, use_reloader=False)
