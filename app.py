@@ -44,6 +44,9 @@ def upload():
     # Call the upload function
     image_url = upload_image(file)
 
+    #remove eny sas tokens for the image so all the users will be forced to reload this image
+    db.sas_tokens.delete_one({"blob_name": file.filename})
+
     # Return the URL or save it to your database as needed
     return jsonify({"image_url": image_url}), 200
 
