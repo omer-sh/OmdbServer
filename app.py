@@ -233,6 +233,7 @@ def get_playlist_info():
     creator = db.users.find_one({"_id": playlist['userId']})
 
     playlist_info = {
+        "userId": str(playlist['userId']),
         "playlistId": str(playlist['_id']),
         "creatorName": creator['fullName'],
         "creatorPhoto": get_blob_url_with_sas(creator["userPhoto"]),
