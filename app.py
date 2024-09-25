@@ -355,14 +355,14 @@ def get_all_user_playlists_by_movie():
     for playlist in playlists:
         result.append({
             "playlistName": playlist['playlistName'],
-            "playlistId": playlist["_id"],
+            "playlistId": str(playlist["_id"]),
             "containsMovie": movie_id in playlist['movieIds']
         })
 
     return jsonify(result), 200
 
 def myApp(environ, start_response):
-    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True, use_reloader=False)
+    app.run(host="127.0.0.1", port=5000, debug=True, threaded=True, use_reloader=False)
 
 if __name__ == '__main__':
     myApp(None, None)
