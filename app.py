@@ -355,6 +355,7 @@ def get_all_user_playlists_by_movie():
     for playlist in playlists:
         result.append({
             "playlistName": playlist['playlistName'],
+            "playlistId": playlist["_id"],
             "containsMovie": movie_id in playlist['movieIds']
         })
 
