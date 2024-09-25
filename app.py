@@ -127,21 +127,6 @@ def create_playlist():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
-# Add a movie to a playlist
-@app.route('/add_movie_to_playlist', methods=['PUT'])
-def add_movie_to_playlist():
-    if request.is_json:
-        data = request.get_json()
-
-        playlist = db.playlists.find_one({"_id": ObjectId(data['playlistId'])})
-        if playlist and playlist['userId'] == ObjectId(data['userId']):
-            db.playlists.update_one({"_id": ObjectId(data['playlistId'])}, {"$addToSet": {"movieIds": data['movieId']}})
-            return jsonify({"message": "Movie added to playlist!"}), 200
-        else:
-            return jsonify({"error": "Unauthorized or playlist not found"}), 404
-    else:
-        return jsonify({"error": "Unsupported Media Type"}), 415
-
 
 # Utility function to generate the full blob URL with SAS token
 def get_blob_url_with_sas(blob_name):
@@ -324,27 +309,29 @@ def remove_playlist():
     return jsonify({"message": "Playlist removed successfully!"}), 200
 
 
-@app.route('/remove_movie_from_playlist', methods=['PUT'])
-def remove_movie_from_playlist():
+@app.route('/update_movie_in_playlists', methods=['PUT'])
+def update_movie_in_playlists():
     if request.is_json:
         data = request.get_json()
-        playlist_id = data.get('playlistId')
         user_id = data.get('userId')
         movie_id = data.get('movieId')
+        add_playlists = data.get('addPlaylists', [])
+        remove_playlists = data.get('removePlaylists', [])
 
-        if not playlist_id or not user_id or not movie_id:
-            return jsonify({"error": "Missing playlistId, userId, or movieId"}), 400
+        if not user_id or not movie_id:
+            return jsonify({"error": "Missing userId or movieId"}), 400
 
-        playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+        for playlist_id in add_playlists:
+            playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+            if playlist and str(playlist['userId']) == user_id:
+                db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$addToSet": {"movieIds": movie_id}})
 
-        if not playlist:
-            return jsonify({"error": "Playlist not found"}), 404
+        for playlist_id in remove_playlists:
+            playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+            if playlist and str(playlist['userId']) == user_id:
+                db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$pull": {"movieIds": movie_id}})
 
-        if str(playlist['userId']) != user_id:
-            return jsonify({"error": "Unauthorized access to remove movie from playlist"}), 403
-
-        db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$pull": {"movieIds": movie_id}})
-        return jsonify({"message": "Movie removed from playlist!"}), 200
+        return jsonify({"message": "Movie playlists updated!"}), 200
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
