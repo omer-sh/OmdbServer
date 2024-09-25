@@ -242,7 +242,7 @@ def get_playlist_info():
         "creatorName": creator['fullName'],
         "creatorPhoto": get_blob_url_with_sas(creator["userPhoto"]) if creator["userPhoto"] else None,
         "playlistName": playlist['playlistName'],
-        "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if creator["userPhoto"] else None,
+        "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if creator["playlistPhoto"] else None,
         "visibility": playlist['visibility'],
         "movieIds": playlist['movieIds']
     }
