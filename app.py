@@ -306,26 +306,22 @@ def update_playlist():
 
 @app.route('/remove_playlist', methods=['DELETE'])
 def remove_playlist():
-    if request.is_json:
-        data = request.get_json()
-        playlist_id = data.get('playlistId')
-        user_id = data.get('userId')
+    playlist_id = request.args.get('playlistId')
+    user_id = request.args.get('userId')
 
-        if not playlist_id or not user_id:
-            return jsonify({"error": "Missing playlistId or userId"}), 400
+    if not playlist_id or not user_id:
+        return jsonify({"error": "Missing playlistId or userId"}), 400
 
-        playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+    playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
 
-        if not playlist:
-            return jsonify({"error": "Playlist not found"}), 404
+    if not playlist:
+        return jsonify({"error": "Playlist not found"}), 404
 
-        if str(playlist['userId']) != user_id:
-            return jsonify({"error": "Unauthorized access to remove playlist"}), 403
+    if str(playlist['userId']) != user_id:
+        return jsonify({"error": "Unauthorized access to remove playlist"}), 403
 
-        db.playlists.delete_one({"_id": ObjectId(playlist_id)})
-        return jsonify({"message": "Playlist removed successfully!"}), 200
-    else:
-        return jsonify({"error": "Unsupported Media Type"}), 415
+    db.playlists.delete_one({"_id": ObjectId(playlist_id)})
+    return jsonify({"message": "Playlist removed successfully!"}), 200
 
 
 @app.route('/remove_movie_from_playlist', methods=['PUT'])
