@@ -107,23 +107,23 @@ def login():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
-# Create playlist with visibility option
-@app.route('/create_playlist', methods=['POST'])
-def create_playlist():
+# Create watch list with visibility option
+@app.route('/create_watch_list', methods=['POST'])
+def create_watch_list():
     if request.is_json:
         data = request.get_json()
 
-        playlist = {
+        watch_list = {
             "userId": ObjectId(data['userId']),
-            "playlistName": data['playlistName'],
-            "playlistPhoto": data['playlistPhoto'],
+            "WatchListName": data['WatchListName'],
+            "WatchListPhoto": data['WatchListPhoto'],
             "visibility": data['visibility'],  # Can be 'public' or 'private'
             "movieIds": []
         }
 
-        result = db.playlists.insert_one(playlist)
-        playlist_id = str(result.inserted_id)
-        return jsonify({'playlistId': playlist_id, 'message': 'Playlist created successfully!'}), 201
+        result = db.watch_lists.insert_one(watch_list)
+        watch_list_id = str(result.inserted_id)
+        return jsonify({'watchListId': watch_list_id, 'message': 'watch list created successfully!'}), 201
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
@@ -159,42 +159,42 @@ def get_blob_url_with_sas(blob_name):
     return f"{blob_name}?{sas_token}"
 
 
-# Get all public playlists of all users
-@app.route('/get_public_playlists', methods=['GET'])
-def get_public_playlists():
-    playlists = db.playlists.find({"visibility": "public"})
+# Get all public watch lists of all users
+@app.route('/get_public_watch_lists', methods=['GET'])
+def get_public_watch_lists():
+    watch_lists = db.watch_lists.find({"visibility": "public"})
     result = []
 
-    for playlist in playlists:
-        creator = db.users.find_one({"_id": playlist['userId']})
+    for watch_list in watch_lists:
+        creator = db.users.find_one({"_id": watch_list['userId']})
 
         result.append({
-            "playlistId": str(playlist['_id']),
+            "watchListId": str(watch_list['_id']),
             "creatorName": creator['fullName'],
-            "playlistName": playlist['playlistName'],
-            "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if playlist['playlistPhoto'] else None,
-            "numberOfMovies": len(playlist['movieIds'])
+            "watchListName": watch_list['watchListName'],
+            "watchListPhoto": get_blob_url_with_sas(watch_list['watchListPhoto']) if watch_list['watchListPhoto'] else None,
+            "numberOfMovies": len(watch_list['movieIds'])
         })
 
     return jsonify(result), 200
 
 
-# Get all playlists for a user (both private and public)
-@app.route('/get_user_playlists/<user_id>', methods=['GET'])
-def get_user_playlists(user_id):
+# Get all watch lists for a user (both private and public)
+@app.route('/get_user_watch_lists/<user_id>', methods=['GET'])
+def get_user_watch_lists(user_id):
     user = db.users.find_one({"_id": ObjectId(user_id)})
 
     if user:
-        playlists = db.playlists.find({"userId": ObjectId(user_id)})
+        watch_lists = db.watch_lists.find({"userId": ObjectId(user_id)})
         result = []
 
-        for playlist in playlists:
+        for watch_list in watch_lists:
             result.append({
-                "playlistId": str(playlist['_id']),
-                "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if playlist["playlistPhoto"] else None,
-                "playlistName": playlist['playlistName'],
-                "visibility": playlist['visibility'],
-                "numberOfMovies": len(playlist['movieIds'])
+                "watchListId": str(watch_list['_id']),
+                "watchListPhoto": get_blob_url_with_sas(watch_list['watchListPhoto']) if watch_list["watchListPhoto"] else None,
+                "watchListName": watch_list['watchListName'],
+                "visibility": watch_list['visibility'],
+                "numberOfMovies": len(watch_list['movieIds'])
             })
 
 
@@ -203,36 +203,36 @@ def get_user_playlists(user_id):
         return jsonify({"error": "User not found"}), 404
 
 
-@app.route('/get_playlist_info', methods=['GET'])
-def get_playlist_info():
-    playlist_id = request.args.get('playlistId')
+@app.route('/get_watch_list_info', methods=['GET'])
+def get_watch_list_info():
+    watch_list_id = request.args.get('watchListId')
     user_id = request.args.get('userId')
 
-    if not playlist_id:
-        return jsonify({"error": "Missing playlistId"}), 400
+    if not watch_list_id:
+        return jsonify({"error": "Missing watchListId"}), 400
 
-    playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+    watch_list = db.watch_lists.find_one({"_id": ObjectId(watch_list_id)})
 
-    if not playlist:
+    if not watch_list:
         return jsonify({"error": "Playlist not found"}), 404
 
-    if playlist['visibility'] == 'private' and str(playlist['userId']) != user_id:
-        return jsonify({"error": "Unauthorized access to private playlist"}), 403
+    if watch_list['visibility'] == 'private' and str(watch_list['userId']) != user_id:
+        return jsonify({"error": "Unauthorized access to private watch list"}), 403
 
-    creator = db.users.find_one({"_id": playlist['userId']})
+    creator = db.users.find_one({"_id": watch_list['userId']})
 
-    playlist_info = {
-        "userId": str(playlist['userId']),
-        "playlistId": str(playlist['_id']),
+    watch_list_info = {
+        "userId": str(watch_list['userId']),
+        "watchListId": str(watch_list['_id']),
         "creatorName": creator['fullName'],
         "creatorPhoto": get_blob_url_with_sas(creator["userPhoto"]) if creator["userPhoto"] else None,
-        "playlistName": playlist['playlistName'],
-        "playlistPhoto": get_blob_url_with_sas(playlist['playlistPhoto']) if playlist["playlistPhoto"] else None,
-        "visibility": playlist['visibility'],
-        "movieIds": playlist['movieIds']
+        "watchListName": watch_list['watchListName'],
+        "watchListPhoto": get_blob_url_with_sas(watch_list['watchListPhoto']) if watch_list["watchListPhoto"] else None,
+        "visibility": watch_list['visibility'],
+        "movieIds": watch_list['movieIds']
     }
 
-    return jsonify(playlist_info), 200
+    return jsonify(watch_list_info), 200
 
 # Update user information (name, photo, password)
 @app.route('/update_user', methods=['POST'])
@@ -258,86 +258,86 @@ def update_user():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 
-@app.route('/update_playlist', methods=['PUT'])
-def update_playlist():
+@app.route('/update_watch_list', methods=['PUT'])
+def update_watch_list():
     if request.is_json:
         data = request.get_json()
-        playlist_id = data.get('playlistId')
+        watch_list_id = data.get('watchListId')
         user_id = data.get('userId')
 
-        if not playlist_id or not user_id:
-            return jsonify({"error": "Missing playlistId or userId"}), 400
+        if not watch_list_id or not user_id:
+            return jsonify({"error": "Missing watchListId or userId"}), 400
 
-        playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+        watch_list = db.watch_lists.find_one({"_id": ObjectId(watch_list_id)})
 
-        if not playlist:
+        if not watch_list:
             return jsonify({"error": "Playlist not found"}), 404
 
-        if str(playlist['userId']) != user_id:
-            return jsonify({"error": "Unauthorized access to update playlist"}), 403
+        if str(watch_list['userId']) != user_id:
+            return jsonify({"error": "Unauthorized access to update watch list"}), 403
 
         update_fields = {}
-        if 'playlistName' in data:
-            update_fields['playlistName'] = data['playlistName']
-        if 'playlistPhoto' in data:
-            update_fields['playlistPhoto'] = data['playlistPhoto']
+        if 'watchListName' in data:
+            update_fields['watchListName'] = data['watchListName']
+        if 'watchListPhoto' in data:
+            update_fields['watchListPhoto'] = data['watchListPhoto']
         if 'visibility' in data:
             update_fields['visibility'] = data['visibility']
 
-        db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$set": update_fields})
+        db.watch_lists.update_one({"_id": ObjectId(watch_list_id)}, {"$set": update_fields})
         return jsonify({"message": "Playlist updated successfully!"}), 200
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
-@app.route('/remove_playlist', methods=['DELETE'])
-def remove_playlist():
-    playlist_id = request.args.get('playlistId')
+@app.route('/remove_watch_list', methods=['DELETE'])
+def remove_watch_list():
+    watch_list_id = request.args.get('watchListId')
     user_id = request.args.get('userId')
 
-    if not playlist_id or not user_id:
-        return jsonify({"error": "Missing playlistId or userId"}), 400
+    if not watch_list_id or not user_id:
+        return jsonify({"error": "Missing watchListId or userId"}), 400
 
-    playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
+    watch_list = db.watch_lists.find_one({"_id": ObjectId(watch_list_id)})
 
-    if not playlist:
+    if not watch_list:
         return jsonify({"error": "Playlist not found"}), 404
 
-    if str(playlist['userId']) != user_id:
-        return jsonify({"error": "Unauthorized access to remove playlist"}), 403
+    if str(watch_list['userId']) != user_id:
+        return jsonify({"error": "Unauthorized access to remove watch list"}), 403
 
-    db.playlists.delete_one({"_id": ObjectId(playlist_id)})
+    db.watch_lists.delete_one({"_id": ObjectId(watch_list_id)})
     return jsonify({"message": "Playlist removed successfully!"}), 200
 
 
-@app.route('/update_movie_in_playlists', methods=['PUT'])
-def update_movie_in_playlists():
+@app.route('/update_movie_in_watch_lists', methods=['PUT'])
+def update_movie_in_watch_lists():
     if request.is_json:
         data = request.get_json()
         user_id = data.get('userId')
         movie_id = data.get('movieId')
-        add_playlists = data.get('addPlaylists', [])
-        remove_playlists = data.get('removePlaylists', [])
+        add_watch_lists = data.get('addWatchLists', [])
+        remove_watch_lists = data.get('removeWatchLists', [])
 
         if not user_id or not movie_id:
             return jsonify({"error": "Missing userId or movieId"}), 400
 
-        for playlist_id in add_playlists:
-            playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
-            if playlist and str(playlist['userId']) == user_id:
-                db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$addToSet": {"movieIds": movie_id}})
+        for watch_list_id in add_watch_lists:
+            watch_list = db.watch_lists.find_one({"_id": ObjectId(watch_list_id)})
+            if watch_list and str(watch_list['userId']) == user_id:
+                db.watch_lists.update_one({"_id": ObjectId(watch_list_id)}, {"$addToSet": {"movieIds": movie_id}})
 
-        for playlist_id in remove_playlists:
-            playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
-            if playlist and str(playlist['userId']) == user_id:
-                db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$pull": {"movieIds": movie_id}})
+        for watch_list_id in remove_watch_lists:
+            watch_list = db.watch_lists.find_one({"_id": ObjectId(watch_list_id)})
+            if watch_list and str(watch_list['userId']) == user_id:
+                db.watch_lists.update_one({"_id": ObjectId(watch_list_id)}, {"$pull": {"movieIds": movie_id}})
 
-        return jsonify({"message": "Movie playlists updated!"}), 200
+        return jsonify({"message": "Movie watch lists updated!"}), 200
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 
-@app.route('/get_all_user_playlists_by_movie', methods=['GET'])
-def get_all_user_playlists_by_movie():
+@app.route('/get_all_user_watch_lists_by_movie', methods=['GET'])
+def get_all_user_watch_lists_by_movie():
     user_id = request.args.get('userId')
     movie_id = request.args.get('movieId')
 
@@ -349,14 +349,14 @@ def get_all_user_playlists_by_movie():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    playlists = db.playlists.find({"userId": ObjectId(user_id)})
+    watch_lists = db.watch_lists.find({"userId": ObjectId(user_id)})
     result = []
 
-    for playlist in playlists:
+    for watch_lists in watch_lists:
         result.append({
-            "playlistName": playlist['playlistName'],
-            "playlistId": str(playlist["_id"]),
-            "containsMovie": movie_id in playlist['movieIds']
+            "watchListName": watch_lists['watchListName'],
+            "watchListId": str(watch_lists["_id"]),
+            "containsMovie": movie_id in watch_lists['movieIds']
         })
 
     return jsonify(result), 200
