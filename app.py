@@ -208,8 +208,8 @@ def get_playlist_info():
     playlist_id = request.args.get('playlistId')
     user_id = request.args.get('userId')
 
-    if not playlist_id or not user_id:
-        return jsonify({"error": "Missing playlistId or userId"}), 400
+    if not playlist_id:
+        return jsonify({"error": "Missing playlistId"}), 400
 
     playlist = db.playlists.find_one({"_id": ObjectId(playlist_id)})
 
