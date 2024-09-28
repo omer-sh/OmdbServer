@@ -115,8 +115,8 @@ def create_watch_list():
 
         watch_list = {
             "userId": ObjectId(data['userId']),
-            "WatchListName": data['WatchListName'],
-            "WatchListPhoto": data['WatchListPhoto'],
+            "watchListName": data['WatchListName'],
+            "watchListPhoto": data['WatchListPhoto'],
             "visibility": data['visibility'],  # Can be 'public' or 'private'
             "movieIds": []
         }
