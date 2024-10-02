@@ -361,8 +361,12 @@ def get_all_user_watch_lists_by_movie():
 
     return jsonify(result), 200
 
+@app.route('/')
+def hello():
+    return "Hello, HTTPS!"
+
 def myApp(environ, start_response):
-    app.run(host="127.0.0.1", port=5000, debug=True, threaded=True, use_reloader=False)
+    app.run()
 
 if __name__ == '__main__':
     myApp(None, None)
