@@ -361,9 +361,6 @@ def get_all_user_watch_lists_by_movie():
 
     return jsonify(result), 200
 
-@app.route('/')
-def hello():
-    return "Hello, HTTPS!"
 
 def myApp(environ, start_response):
     app.run()
