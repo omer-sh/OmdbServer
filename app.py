@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # MongoDB setup
 client = MongoClient('mongodb://mongodb-for-omdb:00ttji0gccVUITNxqCu6NxwTlnvN5cbi034cAQ7lgabq8AojDRdJbfUpImkQBlaRJuO0jy3xwVgLACDbnAa44Q==@mongodb-for-omdb.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@mongodb-for-omdb@')
-db = client['OMDB']  # Replace with your actual database name
+db = client['OMDB']
 
 
 # Initialize the Blob Service Client
@@ -17,11 +17,20 @@ connection_string = "DefaultEndpointsProtocol=https;AccountName=photosforomdb;Ac
 account_key = "uiWxI5x9UWkye4P/jUjM1ZgMkRsYcKMlCjbeFyE1mDA0vkIq+6YN6qy2l2Ze5bAclwi7Xkl2Cx/R+ASt7biu0g=="
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
 account_name = "photosforomdb"
-container_name = "photos"  # Replace with your container name
+container_name = "photos"
 
 
 def upload_image(file):
-    container_name = "photos"  # Your container name
+    """
+    Uploads an image to Azure Blob Storage.
+
+    Args:
+        file: The file object to be uploaded.
+
+    Returns:
+        str: The URL of the uploaded blob.
+    """
+    container_name = "photos"  # container name
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=file.filename)
 
     # Upload the file
@@ -33,6 +42,13 @@ def upload_image(file):
 
 @app.route('/upload', methods=['POST'])
 def upload():
+    """
+    Endpoint to upload an image.
+
+    Returns:
+        JSON response with the URL of the uploaded image or an error message.
+    """
+
     if 'image' not in request.files:
         return jsonify({"error": "No file part"}), 400
 
@@ -50,18 +66,42 @@ def upload():
     # Return the URL or save it to your database as needed
     return jsonify({"image_url": image_url}), 200
 
-# Hash password
 def hash_password(password):
+    """
+    Hashes a password using bcrypt.
+
+    Args:
+        password: The plain text password.
+
+    Returns:
+        bytes: The hashed password.
+    """
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed
 
-# Verify password
 def verify_password(stored_password, provided_password):
+    """
+    Verifies a password against a stored hash.
+
+    Args:
+        stored_password: The hashed password stored in the database.
+        provided_password: The plain text password provided by the user.
+
+    Returns:
+        bool: True if the password matches, False otherwise.
+    """
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password)
 
 @app.route('/register_user', methods=['POST'])
 def register_user():
+    """
+    Endpoint to register a new user.
+    gets username, password, userPhoto(optional), fullName in a json.
+
+    Returns:
+        JSON response with the user ID and a success message or an error message.
+    """
     if request.is_json:
         data = request.get_json()
 
@@ -84,9 +124,15 @@ def register_user():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
-# User login with password verification
 @app.route('/login', methods=['POST'])
 def login():
+    """
+    Endpoint for user login with password verification.
+    gets username and password in a json object.
+
+    Returns:
+        JSON response with user details and a success message or an error message.
+    """
     if request.is_json:
         data = request.get_json()
         user = db.users.find_one({"username": data['username']})
@@ -107,9 +153,15 @@ def login():
     else:
         return jsonify({"error": "Unsupported Media Type"}), 415
 
-# Create watch list with visibility option
 @app.route('/create_watch_list', methods=['POST'])
 def create_watch_list():
+    """
+    Endpoint to create a new watch list.
+    gets userId, watchListName, watchListPhoto(optional), visibility in a json object.
+
+    Returns:
+        JSON response with the watch list ID and a success message or an error message.
+    """
     if request.is_json:
         data = request.get_json()
 
@@ -128,8 +180,17 @@ def create_watch_list():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 
-# Utility function to generate the full blob URL with SAS token
 def get_blob_url_with_sas(blob_name):
+    """
+    Generates a SAS token for a blob and returns the full URL.
+    check if the sas token is still valid and if not generates a new one
+
+    :param blob_name: The name of the blob.
+
+    :return:
+        str: The full URL of the blob with the SAS token.
+    """
+
     # Check if a valid SAS token already exists in the database
     token_data = db.sas_tokens.find_one({"blob_name": blob_name})
     if token_data and token_data['expiry'] > datetime.utcnow():
@@ -159,9 +220,15 @@ def get_blob_url_with_sas(blob_name):
     return f"{blob_name}?{sas_token}"
 
 
-# Get all public watch lists of all users
 @app.route('/get_public_watch_lists', methods=['GET'])
 def get_public_watch_lists():
+    """
+    Endpoint to get all public watch lists of all users.
+
+    :return:
+        JSON response with the details of all public watch lists.
+    """
+
     watch_lists = db.watch_lists.find({"visibility": "public"})
     result = []
 
@@ -182,6 +249,15 @@ def get_public_watch_lists():
 # Get all watch lists for a user (both private and public)
 @app.route('/get_user_watch_lists/<user_id>', methods=['GET'])
 def get_user_watch_lists(user_id):
+    """
+    Endpoint to get all watch lists of a user.
+
+    :param user_id: The ID of the user.
+
+    :return:
+        JSON response with the details of all watch lists of the user.
+    """
+
     user = db.users.find_one({"_id": ObjectId(user_id)})
 
     if user:
@@ -205,6 +281,15 @@ def get_user_watch_lists(user_id):
 
 @app.route('/get_watch_list_info', methods=['GET'])
 def get_watch_list_info():
+    """
+    Endpoint to get the details of a watch list.
+
+    :param watchListId: The ID of the watch list.
+    :param userId: The ID of the user making the request.
+
+    :return:
+        JSON response with the details of the watch list.
+    """
     watch_list_id = request.args.get('watchListId')
     user_id = request.args.get('userId')
 
@@ -234,9 +319,15 @@ def get_watch_list_info():
 
     return jsonify(watch_list_info), 200
 
-# Update user information (name, photo, password)
 @app.route('/update_user', methods=['POST'])
 def update_user():
+    """
+    Endpoint to update user information.
+    gets userId, fullName(optional), userPhoto(optional), password(optional) in a json object.
+
+    :return:
+        JSON response with a success message or an error message.
+    """
     if request.is_json:
         data = request.get_json()
         user = db.users.find_one({"_id": ObjectId(data['userId'])})
@@ -260,6 +351,13 @@ def update_user():
 
 @app.route('/update_watch_list', methods=['PUT'])
 def update_watch_list():
+    """
+    Endpoint to update a watch list.
+    gets watchListId, userId, watchListName(optional), watchListPhoto(optional), visibility(optional) in a json object.
+
+    :return:
+        JSON response with a success message or an error message.
+    """
     if request.is_json:
         data = request.get_json()
         watch_list_id = data.get('watchListId')
@@ -291,6 +389,13 @@ def update_watch_list():
 
 @app.route('/remove_watch_list', methods=['DELETE'])
 def remove_watch_list():
+    """
+    Endpoint to remove a watch list.
+    gets watchListId, userId in the query parameters.
+
+    :return:
+        JSON response with a success message or an error message.
+    """
     watch_list_id = request.args.get('watchListId')
     user_id = request.args.get('userId')
 
@@ -311,6 +416,13 @@ def remove_watch_list():
 
 @app.route('/update_movie_in_watch_lists', methods=['PUT'])
 def update_movie_in_watch_lists():
+    """
+    Endpoint to update a movie in multiple watch lists.
+    gets userId, movieId, addWatchLists(optional), removeWatchLists(optional) in a json object.
+
+    :return:
+        JSON response with a success message or an error message.
+    """
     if request.is_json:
         data = request.get_json()
         user_id = data.get('userId')
@@ -336,8 +448,15 @@ def update_movie_in_watch_lists():
         return jsonify({"error": "Unsupported Media Type"}), 415
 
 
+
 @app.route('/get_all_user_watch_lists_by_movie', methods=['GET'])
 def get_all_user_watch_lists_by_movie():
+    """
+    Endpoint to get all watch lists of all users containing a specific movie.
+
+    :return:
+        JSON response with the details of all watch lists and if they contain the movie or not.
+    """
     user_id = request.args.get('userId')
     movie_id = request.args.get('movieId')
 
